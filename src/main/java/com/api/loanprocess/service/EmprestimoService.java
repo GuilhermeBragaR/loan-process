@@ -25,35 +25,36 @@ public class EmprestimoService {
         return emprestimoRepository.findById(id);
     }
 
-    @Transactional
-    public EmprestimoModel validaEmprestiomCNPJCPF(UUID id, EmprestimoModel emprestimoModel) {
+    public boolean validaEmprestiomCNPJCPF(UUID id, EmprestimoModel emprestimoModel) {
         Optional<PessoaModel> pessoaModelOptional = pessoaService.buscaPorId(id);
-        String tipoIdentificador = pessoaModelOptional.get().getTipoIdentificador();
+        String tipoIdentificador = pessoaModelOptional.get().getIdentificador().toString();
         Integer quantiadeCaracteres = tipoIdentificador.length();
 
         validaCNPJCPF(quantiadeCaracteres);
         validaLimte(id, emprestimoModel);
         validaValorParcela(id, emprestimoModel);
 
-        return emprestimoRepository.save(emprestimoModel);
+        return true;
     }
 
     @Transactional
-    public EmprestimoModel validaEmprestimoEU(UUID id, EmprestimoModel emprestimoModel){
+    public EmprestimoModel realizaEmprestimo(EmprestimoModel emprestimoModel) {
+        return emprestimoRepository.save(emprestimoModel);
+    }
+
+    public boolean validaEmprestimoEU(UUID id, EmprestimoModel emprestimoModel){
         validaEU(id);
         validaLimte(id,emprestimoModel);
         validaValorParcela(id, emprestimoModel);
 
-        return emprestimoRepository.save(emprestimoModel);
+        return true;
     }
-
-    @Transactional
-    public EmprestimoModel validaEmprestimoAP(UUID id, EmprestimoModel emprestimoModel) {
+    public boolean validaEmprestimoAP(UUID id, EmprestimoModel emprestimoModel) {
         validaAP(id);
         validaLimte(id, emprestimoModel);
         validaValorParcela(id, emprestimoModel);
 
-        return emprestimoRepository.save(emprestimoModel);
+        return true;
     }
 
     private void validaCNPJCPF(Integer quantidadeCaracteres) {
@@ -64,7 +65,7 @@ public class EmprestimoService {
 
     private void validaEU(UUID id) {
         Optional<PessoaModel> pessoaModelOptional = pessoaService.buscaPorId(id);
-        String tipoIdentificador = pessoaModelOptional.get().getTipoIdentificador();
+        String tipoIdentificador = pessoaModelOptional.get().getIdentificador().toString();
         Integer quantiadeCaracteres = tipoIdentificador.length();
         Integer primeiroDigito = Character.getNumericValue(tipoIdentificador.charAt(0));
         Integer ultimoDigito = Character.getNumericValue(tipoIdentificador.charAt(tipoIdentificador.length() -1));
@@ -79,7 +80,7 @@ public class EmprestimoService {
 
     private void validaAP(UUID id) {
         Optional<PessoaModel> pessoaModelOptional = pessoaService.buscaPorId(id);
-        String tipoIdentificador = pessoaModelOptional.get().getTipoIdentificador();
+        String tipoIdentificador = pessoaModelOptional.get().getIdentificador().toString();
         Integer quantidadeCaracteres = tipoIdentificador.length();
         Integer ultimoDigito = Character.getNumericValue(tipoIdentificador.charAt(tipoIdentificador.length() -1));
 
