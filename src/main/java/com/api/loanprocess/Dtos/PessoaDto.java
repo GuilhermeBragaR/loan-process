@@ -6,12 +6,14 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class PessoaDto {
     @NotBlank
     private String nome;
     @NotNull
     private Long identificador;
-    @NotBlank
-    private String dataNascimento;
+    @NotNull
+    private LocalDate dataNascimento;
 }

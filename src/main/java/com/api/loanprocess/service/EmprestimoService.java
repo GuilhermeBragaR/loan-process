@@ -1,12 +1,15 @@
 package com.api.loanprocess.service;
 
 import com.api.loanprocess.Dtos.EmprestimoDto;
+import com.api.loanprocess.execoes.ExecoesEmprestimo;
+import com.api.loanprocess.execoes.ExecoesTipoIdentificador;
 import com.api.loanprocess.model.EmprestimoModel;
 import com.api.loanprocess.model.PessoaModel;
 import com.api.loanprocess.repository.EmprestimoRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,41 +28,36 @@ public class EmprestimoService {
         return emprestimoRepository.findById(id);
     }
 
-    public boolean validaEmprestiomCNPJCPF(UUID id, EmprestimoModel emprestimoModel) {
+    public EmprestimoModel validaEmprestimoCNPJCPF(UUID id, EmprestimoModel emprestimoModel) {
         Optional<PessoaModel> pessoaModelOptional = pessoaService.buscaPorId(id);
         String tipoIdentificador = pessoaModelOptional.get().getIdentificador().toString();
         Integer quantiadeCaracteres = tipoIdentificador.length();
 
         validaCNPJCPF(quantiadeCaracteres);
-        validaLimte(id, emprestimoModel);
+        validaLimite(id, emprestimoModel);
         validaValorParcela(id, emprestimoModel);
 
-        return true;
-    }
-
-    @Transactional
-    public EmprestimoModel realizaEmprestimo(EmprestimoModel emprestimoModel) {
         return emprestimoRepository.save(emprestimoModel);
     }
 
-    public boolean validaEmprestimoEU(UUID id, EmprestimoModel emprestimoModel){
+    public EmprestimoModel validaEmprestimoEU(UUID id, EmprestimoModel emprestimoModel){
         validaEU(id);
-        validaLimte(id,emprestimoModel);
+        validaLimite(id,emprestimoModel);
         validaValorParcela(id, emprestimoModel);
 
-        return true;
+        return emprestimoRepository.save(emprestimoModel);
     }
-    public boolean validaEmprestimoAP(UUID id, EmprestimoModel emprestimoModel) {
+    public EmprestimoModel validaEmprestimoAP(UUID id, EmprestimoModel emprestimoModel) {
         validaAP(id);
-        validaLimte(id, emprestimoModel);
+        validaLimite(id, emprestimoModel);
         validaValorParcela(id, emprestimoModel);
 
-        return true;
+        return emprestimoRepository.save(emprestimoModel);
     }
 
     private void validaCNPJCPF(Integer quantidadeCaracteres) {
         if(quantidadeCaracteres != 11 && quantidadeCaracteres != 14){
-            throw new IllegalArgumentException("Digito incorreto Valida CNPJ");
+            throw new ExecoesEmprestimo("Digito incorreto Valida CNPJ");
         }
     }
 
@@ -71,10 +69,10 @@ public class EmprestimoService {
         Integer ultimoDigito = Character.getNumericValue(tipoIdentificador.charAt(tipoIdentificador.length() -1));
         Integer somaDosNumeros = primeiroDigito + ultimoDigito;
         if(quantiadeCaracteres != 8){
-            throw new IllegalArgumentException("Digito incorreto ValidaEU caracter diferente 8");
+            throw new ExecoesEmprestimo("Digito incorreto ValidaEU caracter diferente 8");
         }
         if(somaDosNumeros != 9) {
-            throw new IllegalArgumentException("Digito incorreto soma diferente de 9");
+            throw new ExecoesEmprestimo("Digito incorreto soma diferente de 9");
         }
     }
 
@@ -85,24 +83,24 @@ public class EmprestimoService {
         Integer ultimoDigito = Character.getNumericValue(tipoIdentificador.charAt(tipoIdentificador.length() -1));
 
         if (quantidadeCaracteres != 10) {
-            throw new IllegalArgumentException("Digito incorreto ValidaAP caracterers diferente de 10");
+            throw new ExecoesEmprestimo("Digito incorreto ValidaAP caracterers diferente de 10");
         }
 
         for (var i = 0; i < quantidadeCaracteres; i++){
             Integer digito = Character.getNumericValue(tipoIdentificador.charAt(i));
 
             if(digito.equals(ultimoDigito)){
-                throw new IllegalArgumentException("Ultimo digito existe nos restantes dos digitos");
+                throw new ExecoesEmprestimo("Ultimo digito existe nos restantes dos digitos");
             }
         }
     }
 
-    private void validaLimte(UUID id, EmprestimoModel emprestimoModel) {
+    private void validaLimite(UUID id, EmprestimoModel emprestimoModel) {
         Optional<PessoaModel> pessoaModelOptional = pessoaService.buscaPorId(id);
         Long valorMaximo = pessoaModelOptional.get().getValorMaximoEmprestimo();
         Long valorSolicitado = emprestimoModel.getValor_Emprestimo();
         if(valorSolicitado > valorMaximo) {
-            throw new IllegalArgumentException("Você não pode pegar esse valor maximo como emprestimo");
+            throw new ExecoesEmprestimo("Você não pode pegar esse valor maximo como emprestimo");
         }
     }
 
@@ -112,7 +110,20 @@ public class EmprestimoService {
         Long valorEmprestimo = emprestimoModel.getValor_Emprestimo();
         Long valorParcelas = valorEmprestimo/numeroParcelas;
         if(valorParcelas < pessoaModelOptional.get().getValorMinimoMensal()) {
-            throw new IllegalArgumentException("Valor minimo execedeu permitido para você");
+            throw new ExecoesEmprestimo("Valor minimo não atingido");
         }
+    }
+
+    public Optional<EmprestimoModel> buscaPorId(UUID id) {
+        return emprestimoRepository.findById(id);
+    }
+
+    @Transactional
+    public EmprestimoModel salvarPagamento(EmprestimoModel emprestimoModel) {
+        return emprestimoRepository.save(emprestimoModel);
+    }
+
+    public List<EmprestimoModel> consultaEmprestimo(){
+        return emprestimoRepository.findAll();
     }
 }

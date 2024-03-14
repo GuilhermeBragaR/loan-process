@@ -1,6 +1,8 @@
 package com.api.loanprocess.controller;
 
 import com.api.loanprocess.Dtos.EmprestimoDto;
+import com.api.loanprocess.execoes.ExecoesEmprestimo;
+import com.api.loanprocess.execoes.ExecoesTipoIdentificador;
 import com.api.loanprocess.model.EmprestimoModel;
 import com.api.loanprocess.model.PessoaModel;
 import com.api.loanprocess.service.EmprestimoService;
@@ -10,17 +12,15 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-@Controller
+@RestController
 @RequestMapping("/emprestimo")
 public class EmprestimoController {
 
@@ -30,6 +30,11 @@ public class EmprestimoController {
     public EmprestimoController(EmprestimoService emprestimoService, PessoaService pessoaService){
         this.emprestimoService = emprestimoService;
         this.pessoaService = pessoaService;
+    }
+
+    @GetMapping()
+    public ResponseEntity<List<EmprestimoModel>> consultaEmprestimos(){
+        return ResponseEntity.status(HttpStatus.OK).body(emprestimoService.consultaEmprestimo());
     }
 
     @PostMapping("/{id}")
@@ -47,14 +52,46 @@ public class EmprestimoController {
         emprestimoModel.setData_Criacao(LocalDateTime.now(ZoneId.of("UTC")));
         BeanUtils.copyProperties(emprestimoDto, emprestimoModel);
 
-        if (emprestimoService.validaEmprestiomCNPJCPF(id, emprestimoModel)) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(emprestimoService.realizaEmprestimo(emprestimoModel));
-        }else if (emprestimoService.validaEmprestimoEU(id, emprestimoModel)){
-            return ResponseEntity.status(HttpStatus.CREATED).body(emprestimoService.realizaEmprestimo(emprestimoModel));
-        }else if(emprestimoService.validaEmprestimoAP(id,emprestimoModel)) {
-            return ResponseEntity.status(HttpStatus.CREATED).body(emprestimoService.realizaEmprestimo(emprestimoModel));
+        String tipoIdentificador = pessoaModelOptional.get().getIdentificador().toString();
+        Integer quantiadeCaracteres = tipoIdentificador.length();
+
+        try {
+            if(quantiadeCaracteres == 11 || quantiadeCaracteres == 14){
+                return ResponseEntity.status(HttpStatus.CREATED).body(emprestimoService.validaEmprestimoCNPJCPF(id,emprestimoModel));
+            }else if( quantiadeCaracteres == 8 ){
+                return ResponseEntity.status(HttpStatus.CREATED).body(emprestimoService.validaEmprestimoEU(id,emprestimoModel));
+            }else if (quantiadeCaracteres == 10 ) {
+                return ResponseEntity.status(HttpStatus.CREATED).body(emprestimoService.validaEmprestimoAP(id,emprestimoModel));
+            }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Não encontrado");
+        }catch (ExecoesEmprestimo e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Object> realizaPagamento(@PathVariable(value = "id") UUID id) {
+        var emprestimoModel = new EmprestimoModel();
+
+        Optional<EmprestimoModel> emprestimoModelOptional = emprestimoService.buscaPorId(id);
+        if(!emprestimoModelOptional.isPresent()){
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Id Inexistente");
         }
 
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Não encontrado");
+
+        EmprestimoModel emprestimoModel1 = emprestimoModelOptional.get();
+
+        //BeanUtils.copyProperties(emprestimoModelOptional,emprestimoModel);
+
+
+        emprestimoModel1.setStatus_Pagamento("Pago");
+//        emprestimoModel.setId(emprestimoModelOptional.get().getId());
+//        emprestimoModel.setValor_Emprestimo(emprestimoModelOptional.get().getValor_Emprestimo());
+//        emprestimoModel.setNumero_Parcelas((emprestimoModelOptional.get().getNumero_Parcelas()));
+//        emprestimoModel.setId_Pessoa(emprestimoModelOptional.get().getId_Pessoa());
+//        emprestimoModel.setData_Criacao(emprestimoModelOptional.get().getData_Criacao());
+
+        return ResponseEntity.status(HttpStatus.OK).body(emprestimoService.salvarPagamento(emprestimoModel1));
     }
 }

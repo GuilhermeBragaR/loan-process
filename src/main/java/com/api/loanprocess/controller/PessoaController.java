@@ -1,6 +1,7 @@
 package com.api.loanprocess.controller;
 
 import com.api.loanprocess.Dtos.PessoaDto;
+import com.api.loanprocess.execoes.ExecoesTipoIdentificador;
 import com.api.loanprocess.model.PessoaModel;
 import com.api.loanprocess.enums.TipoIdentificador;
 import com.api.loanprocess.service.PessoaService;
@@ -11,6 +12,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.text.DateFormat;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,18 +32,22 @@ public class PessoaController {
     @PostMapping()
     @Operation(summary = "Cadastro de Pessoas")
     public ResponseEntity<Object> cadastroPessoa(@RequestBody @Valid PessoaDto pessoaDto) {
-        var pessoaModel = new PessoaModel();
-        String identificador = pessoaDto.getIdentificador().toString();
-        int quantidadeCaracteres = identificador.length();
+            var pessoaModel = new PessoaModel();
+            String identificador = pessoaDto.getIdentificador().toString();
+            Integer quantidadeCaracteres = identificador.length();
 
-        TipoIdentificador tipoIdentificador = TipoIdentificador.buscaPorIdentificador(quantidadeCaracteres);
+        try {
+            TipoIdentificador tipoIdentificador = TipoIdentificador.buscaPorIdentificador(quantidadeCaracteres);
 
-        pessoaModel.setTipoIdentificador(tipoIdentificador.name());
-        pessoaModel.setValorMaximoEmprestimo(tipoIdentificador.getValorMaximoMensal());
-        pessoaModel.setValorMinimoMensal(tipoIdentificador.getValorMinimoMensal());
+            pessoaModel.setTipoIdentificador(tipoIdentificador.name());
+            pessoaModel.setValorMaximoEmprestimo(tipoIdentificador.getValorMaximoEmprestimo());
+            pessoaModel.setValorMinimoMensal(tipoIdentificador.getValorMinimoMensal());
 
-        BeanUtils.copyProperties(pessoaDto, pessoaModel);
-        return ResponseEntity.status(HttpStatus.CREATED).body(pessoaService.cadastroPessoa(pessoaModel));
+            BeanUtils.copyProperties(pessoaDto, pessoaModel);
+            return ResponseEntity.status(HttpStatus.CREATED).body(pessoaService.cadastroPessoa(pessoaModel));
+        }catch (ExecoesTipoIdentificador e){
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @GetMapping()
@@ -80,12 +88,27 @@ public class PessoaController {
         String identificador = pessoaDto.getIdentificador().toString();
         int quantidadeCaracteres = identificador.length();
 
-        TipoIdentificador tipoIdentificador = TipoIdentificador.buscaPorIdentificador(quantidadeCaracteres);
+        String dataNascimentoString = pessoaDto.getDataNascimento().toString();
+        LocalDate dataNascimento = LocalDate.parse(dataNascimentoString);
 
-        pessoaModel.setTipoIdentificador(tipoIdentificador.name());
-        pessoaModel.setValorMaximoEmprestimo(tipoIdentificador.getValorMaximoMensal());
-        pessoaModel.setValorMinimoMensal(tipoIdentificador.getValorMinimoMensal());
 
-        return ResponseEntity.status(HttpStatus.OK).body(pessoaService.cadastroPessoa(pessoaModel));
+//        DateTimeFormatter dataFormatada = DateTimeFormatter.ofPattern("yyyyMMdd");
+//        LocalDate dataNascimento = LocalDate.parse(pessoaDto.getDataNascimento(),dataFormatada);
+//
+//        DateTimeFormatter dataFormatadaFinal = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+//        String dataNascimentoFinal = dataNascimento.format(dataFormatadaFinal);
+
+        try  {
+            TipoIdentificador tipoIdentificador = TipoIdentificador.buscaPorIdentificador(quantidadeCaracteres);
+            pessoaModel.setTipoIdentificador(tipoIdentificador.name());
+            pessoaModel.setValorMaximoEmprestimo(tipoIdentificador.getValorMaximoEmprestimo());
+            pessoaModel.setValorMinimoMensal(tipoIdentificador.getValorMinimoMensal());
+            pessoaModel.setDataNascimento(dataNascimento);
+            return ResponseEntity.status(HttpStatus.OK).body(pessoaService.cadastroPessoa(pessoaModel));
+        }catch (ExecoesTipoIdentificador e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+
+
     }
 }

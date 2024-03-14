@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.UUID;
 
 @Entity
@@ -20,7 +21,7 @@ public class PessoaModel implements Serializable { // <- Utilizado para converte
     @Column(nullable = false)
     private Long identificador;
     @Column(nullable = false)
-    private String dataNascimento;
+    private LocalDate dataNascimento;
     @Column()
     private String tipoIdentificador;
     @Column()
